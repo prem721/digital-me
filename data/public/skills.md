@@ -1,0 +1,7 @@
+Skills
+
+Technical Skills
+
+I have studied and practised programming concepts using Python, Java, C, JavaScript, and SQL. My learning includes object-oriented programming, data structures, algorithms, exception handling, file handling, collections, and database operations. I have explored web development using HTML, CSS, and JavaScript and have worked with technologies such as Flask, FastAPI, Java Servlets, JSP, JDBC, and MySQL in application development and learning projects. I am interested in backend development, REST APIs, database integration, and connecting frontend applications with backend services.
+
+My AI-related interests include artificial intelligence, machine learning, deep learning, artificial neural networks, natural language processing, generative AI, large language models, embeddings, semantic search, retrieval-augmented generation, prompt engineering, and intelligent recommendation systems. I am also interested in computer vision, AI-powered automation, and multimodal AI applications. My broader technical learning includes PostgreSQL, React, TensorFlow, IoT, Raspberry Pi programming, sensor integration, and MATLAB. I want to continue improving these skills through practical implementation and project development. Digital Me should distinguish between technologies I have studied, technologies I have used in projects, and technologies in which I have advanced practical experience rather than treating all of them as professional-level skills.

@@ -1,0 +1,5 @@
+Education
+
+
+
+I am pursuing an engineering degree at Vasavi COllege Of engineering and studying subjects related to computer science, programming, and software development. My academic learning includes programming languages such as Python, Java, and C, along with data structures and algorithms, database management systems, operating systems, computer networks, computer architecture, web development, and artificial intelligence. I have also explored machine learning, artificial neural networks, Internet of Things, MATLAB, and other technical subjects through coursework, laboratory assignments, and projects. I believe academic knowledge becomes more valuable when it is applied to practical problems. My goal is to strengthen my technical foundation and use what I learn to develop real-world applications. My exact college name, branch, current academic year, and graduation year still need to be added to my verified personal information.
