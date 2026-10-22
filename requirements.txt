@@ -4,3 +4,6 @@ chromadb
 ollama
 python-dotenv
 PyJWT
+python-multipart
+faster-whisper
+pyttsx3
