@@ -2,10 +2,11 @@
 import re
 import time
 from pathlib import Path
+from urllib.parse import urlparse
 
 ALLOWED_EXTENSIONS = {".wav", ".mp3", ".m4a", ".ogg", ".webm", ".flac"}
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024   # 10 MB
-MAX_SPEECH_CHARS = 600                # longer replies are trimmed before speaking
+MAX_SPEECH_CHARS = 300                # longer replies are trimmed before speaking (keeps cloning fast on a CPU)
 OUTPUT_MAX_AGE_SECONDS = 3600         # generated audio is deleted after an hour
 
 _OUTPUT_NAME_RE = re.compile(r"^[a-f0-9]{32}\.wav$")
@@ -36,3 +37,9 @@ def delete_old_files(directory: Path, max_age_seconds: int = OUTPUT_MAX_AGE_SECO
             f.unlink(missing_ok=True)
             removed += 1
     return removed
+
+
+def is_local_url(url: str) -> bool:
+    """Your reply text is only ever sent to a voice service running on this computer."""
+    parsed = urlparse(url or "")
+    return parsed.scheme == "http" and parsed.hostname in {"127.0.0.1", "localhost"}

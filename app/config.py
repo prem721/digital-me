@@ -10,3 +10,6 @@ load_dotenv(ROOT / ".env", override=True)
 OWNER_PASSWORD = os.getenv("OWNER_PASSWORD", "")
 JWT_SECRET = os.getenv("JWT_SECRET", "")
 TOKEN_HOURS = 8
+
+VOICE_SERVICE_URL = os.getenv("VOICE_SERVICE_URL", "")
+VOICE_SERVICE_TOKEN = os.getenv("VOICE_SERVICE_TOKEN", "")

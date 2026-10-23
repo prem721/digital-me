@@ -215,15 +215,15 @@ def companion_voice_chat(
     result = companion_chat(text, session_id)  # same safety, guardrails, and memory as text chat
 
     try:
-        audio_file = synthesize(result["reply"])
+        audio_file, voice_engine = synthesize(result["reply"])
     except Exception:
-        audio_file = None  # the text reply is still returned if speech fails
+        audio_file, voice_engine = None, None  # the text reply is still returned if speech fails
 
     if not result["crisis"] and result["mood"] != "blocked":
         background.add_task(update_memory, session_id)
     log_event("companion_voice_chat", ip=client_ip(request), mood=result["mood"],
-              crisis=result["crisis"], spoke=audio_file is not None)
-    return {"transcript": text, **result, "audio_file": audio_file}
+              crisis=result["crisis"], voice=voice_engine)
+    return {"transcript": text, **result, "audio_file": audio_file, "voice": voice_engine}
 
 
 @app.get("/voice/audio/{filename}", dependencies=[Depends(require_owner)])

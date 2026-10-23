@@ -11,6 +11,7 @@ from app.voice_rules import (
     MAX_SPEECH_CHARS,
     delete_old_files,
     is_allowed_audio,
+    is_local_url,
     is_valid_output_name,
     trim_for_speech,
 )
@@ -46,5 +47,10 @@ new.write_bytes(b"x")
 os.utime(old, (time.time() - 7200, time.time() - 7200))
 removed = delete_old_files(d, max_age_seconds=3600)
 check(removed == 1 and not old.exists() and new.exists(), "old audio is deleted, new audio kept")
+
+for url in ["http://127.0.0.1:8100", "http://localhost:8100"]:
+    check(is_local_url(url), f"local voice service allowed: {url}")
+for url in ["http://evil.example.com", "https://127.0.0.1:8100", "http://192.168.1.5:8100", "", "ftp://localhost"]:
+    check(not is_local_url(url), f"non-local voice service blocked: {url!r}")
 
 print(f"\nScore: {passed}/{total}")
