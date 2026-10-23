@@ -69,4 +69,3 @@ def update_memory(session_id: str, force: bool = False) -> dict:
     mark_summarized(ids)
     return {"processed": len(ids), "saved_summary": saved_summary,
             "saved_facts": saved_facts, "skipped": None}
-print("yes")
