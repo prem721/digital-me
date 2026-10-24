@@ -50,3 +50,4 @@ check("may look sad" in hint and "weak signal" in hint, "neutral words plus sad 
 check(face_mood_name(None) is None and face_mood_name(sad) == "sad", "face_mood_name helper")
 
 print(f"\nScore: {passed}/{total}")
+print("All tests passed!" if passed == total else "Some tests failed.")
