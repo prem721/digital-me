@@ -7,3 +7,5 @@ PyJWT
 python-multipart
 faster-whisper
 pyttsx3
+opencv-python<5
+onnxruntime

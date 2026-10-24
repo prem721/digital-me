@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from app.audit import log_event
 from app.auth import auth_configured, create_token, require_owner, verify_password
 from app.companion import companion_chat, ingest_private
+from app.emotion import FER_LABELS, get_face_emotion, set_face_emotion
 from app.long_term import clear_index, remove_item
 from app.memory import (
     clear_everything,
@@ -56,6 +57,12 @@ class CompanionResponse(BaseModel):
     reply: str
     mood: str
     crisis: bool
+    face: str | None = None  # webcam mood hint, if the camera script is running
+
+
+class EmotionReading(BaseModel):
+    label: str = Field(min_length=1, max_length=20)
+    confidence: float = Field(ge=0.0, le=1.0)
 
 
 class EndSessionRequest(BaseModel):
@@ -235,3 +242,21 @@ def voice_audio(filename: str):
     if not path.exists():
         raise HTTPException(status_code=404, detail="Not found (files are deleted after an hour).")
     return FileResponse(path, media_type="audio/wav", filename=filename)
+
+
+# ---------- Webcam emotion hint (owner only, kept in memory, never saved) ----------
+@app.post(
+    "/companion/emotion",
+    dependencies=[Depends(require_owner), Depends(rate_limit(max_calls=60, window_seconds=60))],
+)
+def companion_emotion(reading: EmotionReading):
+    if reading.label not in FER_LABELS:
+        raise HTTPException(status_code=422, detail="Unknown emotion label.")
+    set_face_emotion(reading.label, reading.confidence)
+    return {"stored": True}
+
+
+@app.get("/companion/emotion", dependencies=[Depends(require_owner)])
+def companion_emotion_current():
+    """The reading the companion would use right now (or null)."""
+    return {"current": get_face_emotion()}
