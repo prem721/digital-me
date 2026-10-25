@@ -1,4 +1,5 @@
 import re
+from pathlib import Path
 
 from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
@@ -28,6 +29,8 @@ from app.voice_rules import is_valid_output_name
 app = FastAPI(title="Digital Me", version="0.5.0")
 
 SESSION_PATTERN = r"^[A-Za-z0-9_-]{1,50}$"
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+AVATAR_MODEL = Path(__file__).resolve().parent.parent / "data" / "private" / "avatar.vrm"
 
 
 class ChatRequest(BaseModel):
@@ -260,3 +263,17 @@ def companion_emotion(reading: EmotionReading):
 def companion_emotion_current():
     """The reading the companion would use right now (or null)."""
     return {"current": get_face_emotion()}
+
+
+# ---------- Avatar page (a static shell: every action in it still needs the owner login) ----------
+@app.get("/avatar", include_in_schema=False)
+def avatar_page():
+    return FileResponse(STATIC_DIR / "avatar.html", media_type="text/html")
+
+
+@app.get("/avatar/model", dependencies=[Depends(require_owner)], include_in_schema=False)
+def avatar_model():
+    """Your 3D character file (owner only, so it stays private)."""
+    if not AVATAR_MODEL.exists():
+        raise HTTPException(status_code=404, detail="No avatar.vrm in data/private.")
+    return FileResponse(AVATAR_MODEL, media_type="application/octet-stream", filename="avatar.vrm")

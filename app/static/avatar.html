@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Digital Me</title>
+    <script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+    "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+    "@pixiv/three-vrm": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@3.0.0/lib/three-vrm.module.js"
+  }
+}
+</script>
+    <style>
+        :root {
+            --bg: #14161b;
+            --card: #1d2027;
+            --text: #e8eaee;
+            --muted: #9aa1ad;
+            --accent: #6ea8fe;
+            --skin: #f2c9a0;
+            --line: #3a2a20;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, "Segoe UI", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        main {
+            width: 100%;
+            max-width: 560px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        h1 {
+            font-size: 20px;
+            margin: 0;
+            font-weight: 600;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: 14px;
+            padding: 16px;
+        }
+
+        .stage {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        svg {
+            width: 260px;
+            max-width: 70vw;
+            height: auto;
+        }
+
+        #avatar3d {
+            width: 300px;
+            height: 340px;
+            max-width: 80vw;
+        }
+
+        #status {
+            color: var(--muted);
+            font-size: 14px;
+            min-height: 20px;
+            text-align: center;
+        }
+
+        button {
+            font: inherit;
+            border: 0;
+            border-radius: 10px;
+            padding: 10px 16px;
+            background: var(--accent);
+            color: #0b1220;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            opacity: .45;
+            cursor: not-allowed;
+        }
+
+        button.recording {
+            background: #ff6b6b;
+            color: #fff;
+        }
+
+        input {
+            font: inherit;
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid #333845;
+            background: #111319;
+            color: var(--text);
+            width: 100%;
+        }
+
+        .row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #log p {
+            margin: 0 0 10px;
+            line-height: 1.45;
+            font-size: 15px;
+        }
+
+        #log .who {
+            color: var(--muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+        }
+
+        .note {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .err {
+            color: #ff8a8a;
+            font-size: 14px;
+            min-height: 18px;
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <h1>Digital Me · Companion</h1>
+
+        <section class="card" id="loginCard">
+            <p style="margin-top:0">Log in as the owner to talk to your companion.</p>
+            <div class="row">
+                <input id="password" type="password" placeholder="Owner password" autocomplete="current-password">
+                <button id="loginBtn">Log in</button>
+            </div>
+            <p class="err" id="loginErr"></p>
+        </section>
+
+        <section class="card stage hidden" id="appCard">
+            <canvas id="avatar3d" class="hidden" width="600" height="680" aria-label="3D avatar"></canvas>
+            <svg viewBox="0 0 260 280" aria-label="Animated avatar">
+                <ellipse cx="130" cy="150" rx="92" ry="110" fill="var(--skin)" />
+                <path d="M38 140 Q40 40 130 36 Q220 40 222 140 Q200 80 130 78 Q60 80 38 140Z" fill="#2b2118" />
+                <g id="eyeL" style="transform-origin:90px 128px">
+                    <ellipse cx="90" cy="128" rx="14" ry="10" fill="#fff" />
+                    <circle id="pupilL" cx="90" cy="128" r="5.5" fill="#2b2118" />
+                </g>
+                <g id="eyeR" style="transform-origin:170px 128px">
+                    <ellipse cx="170" cy="128" rx="14" ry="10" fill="#fff" />
+                    <circle id="pupilR" cx="170" cy="128" r="5.5" fill="#2b2118" />
+                </g>
+                <path id="browL" d="" stroke="#2b2118" stroke-width="5" stroke-linecap="round" fill="none" />
+                <path id="browR" d="" stroke="#2b2118" stroke-width="5" stroke-linecap="round" fill="none" />
+                <path d="M130 140 Q124 168 132 172" stroke="#c99a74" stroke-width="3" fill="none"
+                    stroke-linecap="round" />
+                <path id="mouth" d="" fill="#7a2f2f" stroke="var(--line)" stroke-width="3" stroke-linejoin="round"
+                    stroke-linecap="round" />
+            </svg>
+            <div id="status">Ready.</div>
+            <div class="row">
+                <button id="talkBtn">🎤 Start talking</button>
+                <button id="logoutBtn" style="background:#2a2f3a;color:var(--text)">Log out</button>
+            </div>
+            <p class="note">Click to start, speak for 5 to 15 seconds, click again to send. On a laptop without a
+                graphics card
+                the answer can take one to two minutes. Your recording is deleted on the server right after it is
+                transcribed.</p>
+        </section>
+
+        <section class="card hidden" id="logCard">
+            <div id="log"></div>
+        </section>
+    </main>
+
+    <script>
+        (() => {
+            const $ = (id) => document.getElementById(id);
+            let token = null;               // kept in memory only, never stored in the browser
+            let audioCtx = null;
+            let analyser = null;
+            let speaking = false;
+            let recorder = null, chunks = [], stream = null;
+            let busy = false;
+            let moodName = "neutral";
+            window.digitalMe = { state: { speaking: false, rms: 0, low: 0, mid: 0, high: 0, mood: "neutral" } };
+
+            // ---------- face state ----------
+            const MOODS = {            // smile, inner-brow tilt, brow height, extra mouth opening
+                neutral: { smile: 0.1, tilt: 0, brow: 0, open: 0 },
+                happy: { smile: 0.9, tilt: 0, brow: -4, open: 0 },
+                sad: { smile: -0.6, tilt: 9, brow: 2, open: 0 },
+                lonely: { smile: -0.5, tilt: 8, brow: 2, open: 0 },
+                angry: { smile: -0.3, tilt: -9, brow: 4, open: 0 },
+                annoyed: { smile: -0.2, tilt: -6, brow: 3, open: 0 },
+                stressed: { smile: -0.3, tilt: 6, brow: 0, open: 0 },
+                surprised: { smile: 0.1, tilt: 0, brow: -10, open: 6 },
+            };
+            const cur = { smile: 0.1, tilt: 0, brow: 0, open: 0, width: 34, blink: 1 };
+            let target = MOODS.neutral;
+            let mouthOpen = 0, mouthWidth = 34;
+
+            function setMood(name) { moodName = name; target = MOODS[name] || MOODS.neutral; }
+
+            function brow(el, side) {
+                const cx = side === "L" ? 90 : 170;
+                const dir = side === "L" ? 1 : -1;                 // mirror
+                const y = 100 + cur.brow;
+                const x1 = cx - 20 * dir, x2 = cx + 20 * dir;
+                el.setAttribute("d", `M${x1} ${y + cur.tilt * 0.0} Q${cx} ${y - 5} ${x2} ${y - cur.tilt}`);
+            }
+
+            function mouthPath() {
+                const cx = 130, cy = 205;
+                const w = mouthWidth;
+                const open = Math.max(0, mouthOpen + cur.open);
+                const cornerY = cy - cur.smile * 10;
+                const upperCtrl = cy + cur.smile * 16 - open * 0.55;
+                const lowerCtrl = cy + cur.smile * 16 + open * 1.4 + 1;
+                return `M${cx - w} ${cornerY} Q${cx} ${upperCtrl} ${cx + w} ${cornerY} Q${cx} ${lowerCtrl} ${cx - w} ${cornerY}Z`;
+            }
+
+            function lerp(a, b, t) { return a + (b - a) * t; }
+
+            // ---------- blinking ----------
+            let blinkUntil = 0, nextBlink = performance.now() + 2500;
+
+            // ---------- animation loop ----------
+            const timeData = new Uint8Array(1024), freqData = new Uint8Array(512);
+            function frame(now) {
+                cur.smile = lerp(cur.smile, target.smile, 0.08);
+                cur.tilt = lerp(cur.tilt, target.tilt, 0.08);
+                cur.brow = lerp(cur.brow, target.brow, 0.08);
+                cur.open = lerp(cur.open, target.open, 0.08);
+
+                let wantOpen = 0, wantWidth = 34;
+                let rmsNow = 0, lowE = 0, midE = 0, highE = 0;
+                if (speaking && analyser) {
+                    analyser.getByteTimeDomainData(timeData);
+                    let sum = 0;
+                    for (let i = 0; i < timeData.length; i++) { const v = (timeData[i] - 128) / 128; sum += v * v; }
+                    const rms = Math.sqrt(sum / timeData.length);
+                    rmsNow = rms;
+                    wantOpen = Math.min(40, rms * 200);               // louder = wider open
+
+                    analyser.getByteFrequencyData(freqData);
+                    const binHz = audioCtx.sampleRate / analyser.fftSize;
+                    const band = (lo, hi) => {
+                        let total = 0, n = 0;
+                        for (let i = Math.floor(lo / binHz); i <= Math.min(freqData.length - 1, Math.floor(hi / binHz)); i++) { total += freqData[i] / 255; n++; }
+                        return n ? total / n : 0;
+                    };
+                    lowE = band(100, 500); midE = band(500, 1500); highE = band(1500, 4000);
+                    let num = 0, den = 0;
+                    for (let i = 0; i < freqData.length; i++) { num += i * freqData[i]; den += freqData[i]; }
+                    const centroid = den > 0 ? num / den / freqData.length : 0.1;   // 0..1, higher = brighter sound
+                    wantWidth = 28 + Math.min(1, centroid * 5) * 16;                // bright sounds = wider mouth
+                }
+                window.digitalMe.state = { speaking: speaking && !!analyser, rms: rmsNow, low: lowE, mid: midE, high: highE, mood: moodName };
+                mouthOpen = lerp(mouthOpen, wantOpen, 0.45);
+                mouthWidth = lerp(mouthWidth, wantWidth, 0.25);
+
+                if (now > nextBlink) { blinkUntil = now + 130; nextBlink = now + 2500 + Math.random() * 3500; }
+                const eyeScale = now < blinkUntil ? 0.08 : 1;
+                cur.blink = lerp(cur.blink, eyeScale, 0.6);
+                $("eyeL").style.transform = `scaleY(${cur.blink})`;
+                $("eyeR").style.transform = `scaleY(${cur.blink})`;
+
+                brow($("browL"), "L"); brow($("browR"), "R");
+                $("mouth").setAttribute("d", mouthPath());
+                requestAnimationFrame(frame);
+            }
+            requestAnimationFrame(frame);
+
+            // ---------- helpers ----------
+            function status(text) { $("status").textContent = text; }
+            function addLog(who, text) {
+                $("logCard").classList.remove("hidden");
+                const wrap = document.createElement("div");
+                const w = document.createElement("div"); w.className = "who"; w.textContent = who;
+                const p = document.createElement("p"); p.textContent = text;     // textContent: never runs HTML
+                wrap.append(w, p); $("log").prepend(wrap);
+            }
+            function showLogin(message) {
+                token = null;
+                $("appCard").classList.add("hidden"); $("loginCard").classList.remove("hidden");
+                $("loginErr").textContent = message || "";
+            }
+            function auth() { return { Authorization: "Bearer " + token }; }
+
+            // ---------- login ----------
+            async function login() {
+                $("loginErr").textContent = "";
+                try {
+                    const res = await fetch("/auth/login", {
+                        method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ password: $("password").value }),
+                    });
+                    if (!res.ok) { $("loginErr").textContent = res.status === 429 ? "Too many tries. Wait a minute." : "Wrong password."; return; }
+                    token = (await res.json()).access_token;
+                    $("password").value = "";
+                    $("loginCard").classList.add("hidden"); $("appCard").classList.remove("hidden");
+                    status("Ready.");
+                    window.dispatchEvent(new CustomEvent("dm-login", { detail: { token } }));   // lets the 3D avatar load
+                } catch { $("loginErr").textContent = "Cannot reach the server."; }
+            }
+            $("loginBtn").onclick = login;
+            $("password").onkeydown = (e) => { if (e.key === "Enter") login(); };
+            $("logoutBtn").onclick = () => { stopStream(); showLogin(""); };
+
+            // ---------- recording ----------
+            function stopStream() { if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; } }
+
+            async function toggleRecording() {
+                if (busy) return;
+                if (recorder && recorder.state === "recording") { recorder.stop(); return; }
+                try {
+                    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    await audioCtx.resume();                                        // allowed because of this click
+                    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                } catch { status("Microphone blocked. Allow it in the browser's address bar and try again."); return; }
+
+                chunks = [];
+                const type = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "";
+                recorder = type ? new MediaRecorder(stream, { mimeType: type }) : new MediaRecorder(stream);
+                recorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+                recorder.onstop = () => { stopStream(); send(new Blob(chunks, { type: recorder.mimeType || "audio/webm" })); };
+                recorder.start();
+                $("talkBtn").textContent = "⏹ Stop and send"; $("talkBtn").classList.add("recording");
+                status("Listening... speak now.");
+            }
+            $("talkBtn").onclick = toggleRecording;
+
+            function extensionFor(mime) {
+                if (mime.includes("webm")) return ".webm";
+                if (mime.includes("ogg")) return ".ogg";
+                if (mime.includes("mp4")) return ".m4a";
+                return ".webm";
+            }
+
+            // ---------- send, then speak ----------
+            async function send(blob) {
+                $("talkBtn").classList.remove("recording"); $("talkBtn").textContent = "🎤 Start talking";
+                if (blob.size < 2000) { status("That was too short. Try again."); return; }
+                busy = true; $("talkBtn").disabled = true;
+                setMood("neutral");
+                status("Thinking... this can take a minute or two.");
+                try {
+                    const form = new FormData();
+                    form.append("audio", blob, "voice" + extensionFor(blob.type));
+                    form.append("session_id", "avatar");
+                    const res = await fetch("/companion/voice-chat", { method: "POST", headers: auth(), body: form });
+                    if (res.status === 401) { showLogin("Your login expired. Please log in again."); return; }
+                    if (res.status === 422) { status("I could not hear any speech. Try again, a bit closer to the mic."); return; }
+                    if (!res.ok) { status("Something went wrong (error " + res.status + "). See the server window."); return; }
+                    const data = await res.json();
+
+                    addLog("You", data.transcript);
+                    addLog("Companion", data.reply);
+                    // your words decide the face; the camera reading fills in when your words are neutral
+                    const mood = data.crisis ? "neutral" : (data.mood !== "neutral" ? data.mood : (data.face || "neutral"));
+                    setMood(mood);
+
+                    if (data.audio_file) {
+                        status("Speaking...");
+                        await speak(data.audio_file);
+                    }
+                    status(data.voice === "placeholder" ? "Done (the cloned voice was not available, so a standard voice was used)." : "Done.");
+                } catch {
+                    status("Could not reach the server.");
+                } finally {
+                    busy = false; $("talkBtn").disabled = false;
+                }
+            }
+
+            async function speak(filename) {
+                const res = await fetch("/voice/audio/" + encodeURIComponent(filename), { headers: auth() });
+                if (!res.ok) { status("The reply audio was not found."); return; }
+                const url = URL.createObjectURL(await res.blob());
+                const audio = new Audio(url);
+                const source = audioCtx.createMediaElementSource(audio);
+                analyser = audioCtx.createAnalyser(); analyser.fftSize = 1024;
+                source.connect(analyser); analyser.connect(audioCtx.destination);
+                await new Promise((resolve) => {
+                    audio.onended = resolve; audio.onerror = resolve;
+                    speaking = true;
+                    audio.play().catch(resolve);
+                });
+                speaking = false;
+                URL.revokeObjectURL(url);
+                source.disconnect(); analyser = null;
+            }
+        })();
+    </script>
+
+    <script type="module">
+        // 3D avatar (VRM). If there is no model file, or loading fails, the 2D face stays.
+        const CAMERA_Z = 0.95;      // distance from the character (smaller = closer)
+        const ARM_DOWN = 1.2;       // radians; if the arms point UP, change the sign of ARM_DOWN
+        let started = false;
+
+        // BEGIN visemes
+        function visemesFrom(state) {
+            const volume = Math.min(1, state.rms * 6);
+            const wAa = state.mid, wOh = state.low * 0.8, wEe = state.high;
+            const sum = wAa + wOh + wEe + 1e-6;
+            const aa = volume * (wAa / sum), oh = volume * (wOh / sum), ee = volume * (wEe / sum);
+            return {
+                aa: Math.min(0.9, aa * 1.6), oh: Math.min(0.9, oh * 1.6), ou: Math.min(0.9, oh * 0.9),
+                ee: Math.min(0.9, ee * 1.4), ih: Math.min(0.9, ee * 0.8)
+            };
+        }
+        // END visemes
+
+        const MOOD_EXPRESSIONS = {
+            happy: { happy: 0.8 }, sad: { sad: 0.7 }, lonely: { sad: 0.6 }, angry: { angry: 0.7 },
+            annoyed: { angry: 0.4 }, stressed: { sad: 0.35 }, surprised: { surprised: 0.8 }, neutral: {},
+        };
+
+        function use2D(message) {
+            document.getElementById("avatar3d").classList.add("hidden");
+            document.querySelector(".stage svg").classList.remove("hidden");
+            if (message) document.getElementById("status").textContent = message;
+        }
+
+        window.addEventListener("dm-login", async (event) => {
+            if (started) return;
+            started = true;
+            const token = event.detail.token;
+            try {
+                const res = await fetch("/avatar/model", { headers: { Authorization: "Bearer " + token } });
+                if (!res.ok) { started = false; return; }                // no avatar.vrm yet: keep the 2D face
+                const modelUrl = URL.createObjectURL(await res.blob());
+
+                const THREE = await import("three");
+                const { GLTFLoader } = await import("three/addons/loaders/GLTFLoader.js");
+                const { VRMLoaderPlugin, VRMUtils } = await import("@pixiv/three-vrm");
+
+                const canvas = document.getElementById("avatar3d");
+                const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                renderer.setSize(300, 340, false);
+                const scene = new THREE.Scene();
+                const camera = new THREE.PerspectiveCamera(30, 300 / 340, 0.1, 20);
+                scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+                const light = new THREE.DirectionalLight(0xffffff, 1.6);
+                light.position.set(1, 2, 2);
+                scene.add(light);
+
+                const loader = new GLTFLoader();
+                loader.register((parser) => new VRMLoaderPlugin(parser));
+                const gltf = await loader.loadAsync(modelUrl);
+                URL.revokeObjectURL(modelUrl);
+                const vrm = gltf.userData.vrm;
+                VRMUtils.rotateVRM0(vrm);
+                scene.add(vrm.scene);
+
+                const bone = (name) => vrm.humanoid.getNormalizedBoneNode(name);
+                const leftArm = bone("leftUpperArm"), rightArm = bone("rightUpperArm");
+                if (leftArm) leftArm.rotation.z = -ARM_DOWN;
+                if (rightArm) rightArm.rotation.z = ARM_DOWN;
+
+                const head = bone("head"), chest = bone("chest") || bone("spine");
+                const headPos = new THREE.Vector3();
+                head.getWorldPosition(headPos);
+                camera.position.set(0, headPos.y + 0.03, CAMERA_Z);
+                camera.lookAt(0, headPos.y - 0.02, 0);
+
+                const manager = vrm.expressionManager;
+                const setExpression = (name, value) => { if (manager && manager.getExpression(name)) manager.setValue(name, value); };
+                const moodNow = { happy: 0, sad: 0, angry: 0, surprised: 0 };
+                const mouthNow = { aa: 0, ih: 0, ou: 0, ee: 0, oh: 0 };
+
+                canvas.classList.remove("hidden");
+                document.querySelector(".stage svg").classList.add("hidden");
+
+                const clock = new THREE.Clock();
+                let nextBlink = 2.5, blinkStart = -10;
+                function tick() {
+                    requestAnimationFrame(tick);
+                    const dt = Math.min(clock.getDelta(), 0.1);
+                    const t = clock.elapsedTime;
+                    const state = window.digitalMe.state;
+
+                    // expression from mood
+                    const wanted = MOOD_EXPRESSIONS[state.mood] || {};
+                    for (const name of Object.keys(moodNow)) {
+                        moodNow[name] += ((wanted[name] || 0) - moodNow[name]) * 0.06;
+                        setExpression(name, moodNow[name]);
+                    }
+                    // mouth shapes from the sound being spoken
+                    const target = state.speaking ? visemesFrom(state) : { aa: 0, ih: 0, ou: 0, ee: 0, oh: 0 };
+                    for (const name of Object.keys(mouthNow)) {
+                        mouthNow[name] += (target[name] - mouthNow[name]) * 0.45;
+                        setExpression(name, mouthNow[name]);
+                    }
+                    // blinking
+                    if (t > nextBlink) { blinkStart = t; nextBlink = t + 2.5 + Math.random() * 3.5; }
+                    const blinkPhase = (t - blinkStart) / 0.14;
+                    setExpression("blink", blinkPhase >= 0 && blinkPhase <= 1 ? Math.sin(Math.PI * blinkPhase) : 0);
+                    // small idle movement
+                    if (head) { head.rotation.y = Math.sin(t * 0.6) * 0.05; head.rotation.x = Math.sin(t * 0.8) * 0.02 + (state.speaking ? state.rms * 0.15 : 0); }
+                    if (chest) chest.rotation.x = Math.sin(t * 1.2) * 0.012;
+
+                    vrm.update(dt);
+                    renderer.render(scene, camera);
+                }
+                tick();
+            } catch (error) {
+                console.error("3D avatar failed to load:", error);
+                started = false;
+                use2D("The 3D avatar could not load (open the browser console for details), so the 2D face is shown.");
+            }
+        });
+    </script>
+</body>
+
+</html>
