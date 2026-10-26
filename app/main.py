@@ -25,7 +25,7 @@ from app.stt import transcribe
 from app.tts import AUDIO_OUT_DIR, synthesize
 from app.voice import save_upload
 from app.voice_rules import is_valid_output_name
-
+from fastapi.staticfiles import StaticFiles
 app = FastAPI(title="Digital Me", version="0.5.0")
 
 SESSION_PATTERN = r"^[A-Za-z0-9_-]{1,50}$"
@@ -277,3 +277,4 @@ def avatar_model():
     if not AVATAR_MODEL.exists():
         raise HTTPException(status_code=404, detail="No avatar.vrm in data/private.")
     return FileResponse(AVATAR_MODEL, media_type="application/octet-stream", filename="avatar.vrm")
+    
