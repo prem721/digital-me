@@ -1,13 +1,16 @@
 import re
+import threading
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from app.audit import log_event
 from app.auth import auth_configured, create_token, require_owner, verify_password
 from app.companion import companion_chat, ingest_private
+from app.config import PUBLIC_MODE
 from app.emotion import FER_LABELS, get_face_emotion, set_face_emotion
 from app.long_term import clear_index, remove_item
 from app.memory import (
@@ -19,14 +22,40 @@ from app.memory import (
 )
 from app.memory_update import update_memory
 from app.pipeline import run_presentation
-from app.rag import ingest_public
+from app.public_mode import is_allowed_in_public_mode
+from app.rag import ingest_public_detailed, warm_up
 from app.ratelimit import rate_limit
 from app.stt import transcribe
 from app.tts import AUDIO_OUT_DIR, synthesize
 from app.voice import save_upload
 from app.voice_rules import is_valid_output_name
-from fastapi.staticfiles import StaticFiles
-app = FastAPI(title="Digital Me", version="0.5.0")
+
+@asynccontextmanager
+async def lifespan(_app):
+    # Load the language model in the background while you open the page
+    threading.Thread(target=warm_up, daemon=True).start()
+    yield
+
+
+app = FastAPI(
+    title="Digital Me",
+    version="0.9.0",
+    lifespan=lifespan,
+    # In public mode there is no interactive docs page that would show visitors your endpoints
+    **({"docs_url": None, "redoc_url": None, "openapi_url": None} if PUBLIC_MODE else {}),
+)
+
+if PUBLIC_MODE:
+    print("PUBLIC MODE: only the visitor page, /health and /presentation/chat are available.")
+
+    @app.middleware("http")
+    async def only_public_routes(request: Request, call_next):
+        if not is_allowed_in_public_mode(request.url.path):
+            return JSONResponse({"detail": "Not found."}, status_code=404)
+        return await call_next(request)
+
+# At most 2 questions use the language model at once; others wait briefly, then get a polite "busy"
+_llm_slots = threading.BoundedSemaphore(2)
 
 SESSION_PATTERN = r"^[A-Za-z0-9_-]{1,50}$"
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -76,6 +105,12 @@ def client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+@app.get("/", include_in_schema=False)
+def home():
+    """The visitor page (presentation mode)."""
+    return FileResponse(STATIC_DIR / "index.html", media_type="text/html")
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -100,9 +135,13 @@ def login(req: LoginRequest, request: Request):
 # ---------- Presentation mode (public visitors) ----------
 @app.post("/ingest", dependencies=[Depends(require_owner)])
 def ingest(request: Request):
-    count = ingest_public()
-    log_event("ingest", ip=client_ip(request), chunks=count)
-    return {"chunks_stored": count}
+    report = ingest_public_detailed()
+    log_event("ingest", ip=client_ip(request), chunks=report["chunks"])
+    return {
+        "chunks_stored": report["chunks"],
+        "files_loaded": report["files_loaded"],
+        "files_without_content": report["files_without_content"],  # still templates: fill these in
+    }
 
 
 @app.post(
@@ -111,7 +150,15 @@ def ingest(request: Request):
     dependencies=[Depends(rate_limit(max_calls=20, window_seconds=60))],
 )
 def presentation_chat(req: ChatRequest, request: Request):
-    return run_presentation(req.question, ip=client_ip(request))
+    if not _llm_slots.acquire(timeout=90):
+        raise HTTPException(
+            status_code=503,
+            detail="I'm busy answering other questions. Please try again in a minute.",
+        )
+    try:
+        return run_presentation(req.question, ip=client_ip(request))
+    finally:
+        _llm_slots.release()
 
 
 # ---------- Companion mode (owner only) ----------
@@ -277,4 +324,3 @@ def avatar_model():
     if not AVATAR_MODEL.exists():
         raise HTTPException(status_code=404, detail="No avatar.vrm in data/private.")
     return FileResponse(AVATAR_MODEL, media_type="application/octet-stream", filename="avatar.vrm")
-    

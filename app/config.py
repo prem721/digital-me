@@ -13,3 +13,7 @@ TOKEN_HOURS = 8
 
 VOICE_SERVICE_URL = os.getenv("VOICE_SERVICE_URL", "")
 VOICE_SERVICE_TOKEN = os.getenv("VOICE_SERVICE_TOKEN", "")
+
+# Set by you in the terminal only when sharing publicly (do NOT put it in .env):
+#   Command Prompt:  set PUBLIC_MODE=1        PowerShell:  $env:PUBLIC_MODE="1"
+PUBLIC_MODE = os.getenv("PUBLIC_MODE", "").strip() == "1"

@@ -10,7 +10,7 @@ from app.memory_rules import (
     is_sensitive,
     parse_extraction,
 )
-from app.rag import MODEL
+from app.rag import KEEP_ALIVE, MODEL
 
 SUMMARY_EVERY = 12       # summarize after this many unsummarized messages
 MAX_TRANSCRIPT_CHARS = 6000
@@ -26,6 +26,7 @@ def _extract(transcript: str) -> dict:
             ],
             format="json",
             options={"temperature": 0.2, "num_predict": 300},
+            keep_alive=KEEP_ALIVE,
         )
         return parse_extraction(response["message"]["content"])
     except Exception:

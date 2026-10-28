@@ -8,7 +8,7 @@ from app.emotion import combine_mood, face_mood_name, get_face_emotion
 from app.guardrails import check_input, check_output, clean_input
 from app.memory import add_message
 from app.prompt_builder import build_messages
-from app.rag import MODEL
+from app.rag import KEEP_ALIVE, MODEL
 from app.safety import CRISIS_REPLY, detect_mood, is_crisis
 
 FALLBACK_REPLY = "Hmm, I lost my train of thought. Can you say that again?"
@@ -44,6 +44,7 @@ def companion_chat(message: str, session_id: str = "default") -> dict:
         model=MODEL,
         messages=messages,
         options={"temperature": 0.7, "num_predict": 250},
+        keep_alive=KEEP_ALIVE,
     )
 
     # 7. Output guardrails

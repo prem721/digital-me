@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Chat with Prem's digital version</title>
+    <style>
+        :root {
+            --bg: #f6f7f9;
+            --card: #ffffff;
+            --text: #1b1f27;
+            --muted: #667085;
+            --accent: #2f6fed;
+            --bubble-me: #2f6fed;
+            --bubble-ai: #eef1f6;
+            --border: #e2e6ee;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #14161b;
+                --card: #1d2027;
+                --text: #e8eaee;
+                --muted: #9aa1ad;
+                --accent: #6ea8fe;
+                --bubble-me: #3b6fd6;
+                --bubble-ai: #262b35;
+                --border: #2f3541;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: system-ui, "Segoe UI", sans-serif;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        main {
+            width: 100%;
+            max-width: 680px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        header h1 {
+            margin: 0 0 4px;
+            font-size: 22px;
+        }
+
+        header p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.45;
+        }
+
+        .badge {
+            display: inline-block;
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 14px;
+        }
+
+        #chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .chip {
+            font: inherit;
+            font-size: 14px;
+            padding: 7px 12px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            color: var(--text);
+            cursor: pointer;
+        }
+
+        .chip:hover {
+            border-color: var(--accent);
+        }
+
+        #chat {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-height: 160px;
+            max-height: 52vh;
+            overflow-y: auto;
+        }
+
+        .msg {
+            max-width: 88%;
+            padding: 10px 13px;
+            border-radius: 14px;
+            line-height: 1.45;
+            font-size: 15px;
+            white-space: pre-wrap;
+        }
+
+        .me {
+            align-self: flex-end;
+            background: var(--bubble-me);
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+
+        .ai {
+            align-self: flex-start;
+            background: var(--bubble-ai);
+            border-bottom-left-radius: 4px;
+        }
+
+        .src {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 6px;
+        }
+
+        .system {
+            align-self: center;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .row {
+            display: flex;
+            gap: 8px;
+        }
+
+        input {
+            flex: 1;
+            font: inherit;
+            padding: 11px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        button.send {
+            font: inherit;
+            font-weight: 600;
+            border: 0;
+            border-radius: 10px;
+            padding: 0 18px;
+            background: var(--accent);
+            color: #fff;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            opacity: .5;
+            cursor: not-allowed;
+        }
+
+        footer {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <header>
+            <span class="badge">AI assistant · not the real person</span>
+            <h1>Chat with Prem's digital version</h1>
+            <p>I answer questions about Prem Kumar's skills, projects, education, and interests, using only information
+                he chose to share.
+                I can make mistakes, and I will say so when I don't know something. Replies can take up to a minute.</p>
+        </header>
+
+        <section class="card">
+            <div id="chips"></div>
+        </section>
+
+        <section class="card">
+            <div id="chat" aria-live="polite">
+                <div class="system">Ask a question to get started.</div>
+            </div>
+            <div class="row" style="margin-top:12px">
+                <input id="question" type="text" maxlength="500" placeholder="Ask about Prem..." autocomplete="off">
+                <button class="send" id="send">Send</button>
+            </div>
+        </section>
+
+        <footer>
+            To keep this service safe, your question and a technical address (IP) may be logged. Please do not share
+            passwords or other personal secrets.
+        </footer>
+    </main>
+
+    <script>
+        (() => {
+            const $ = (id) => document.getElementById(id);
+            const SUGGESTIONS = ["What are your skills?", "Tell me about your projects", "What are you studying?", "What are your goals?", "What do you do in your free time?"];
+            let busy = false;
+
+            SUGGESTIONS.forEach((text) => {
+                const b = document.createElement("button");
+                b.className = "chip"; b.textContent = text;
+                b.onclick = () => ask(text);
+                $("chips").appendChild(b);
+            });
+
+            function add(kind, text, sources) {
+                const first = $("chat").querySelector(".system");
+                if (first && kind !== "system") first.remove();
+                const div = document.createElement("div");
+                div.className = "msg " + kind;
+                div.textContent = text;                         // text only: replies can never inject HTML
+                if (sources && sources.length) {
+                    const s = document.createElement("div");
+                    s.className = "src";
+                    s.textContent = "Based on: " + sources.map((n) => n.replace(/\.(md|txt)$/i, "")).join(", ");
+                    div.appendChild(s);
+                }
+                $("chat").appendChild(div);
+                $("chat").scrollTop = $("chat").scrollHeight;
+                return div;
+            }
+
+            async function ask(text) {
+                text = (text || "").trim();
+                if (!text || busy) return;
+                busy = true; $("send").disabled = true; $("question").value = "";
+                add("me", text);
+                const waiting = add("ai", "Thinking...");
+                try {
+                    const res = await fetch("/presentation/chat", {
+                        method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ question: text }),
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        waiting.textContent = data.answer;
+                        if (data.sources && data.sources.length) {
+                            const s = document.createElement("div"); s.className = "src";
+                            s.textContent = "Based on: " + data.sources.map((n) => n.replace(/\.(md|txt)$/i, "")).join(", ");
+                            waiting.appendChild(s);
+                        }
+                    } else if (res.status === 429) { waiting.textContent = "That's a lot of questions at once. Please wait a minute and try again."; }
+                    else if (res.status === 503) { waiting.textContent = "I'm busy answering other questions. Please try again in a minute."; }
+                    else if (res.status === 422) { waiting.textContent = "Please ask a question of 1 to 500 characters."; }
+                    else { waiting.textContent = "Something went wrong on my side. Please try again later."; }
+                } catch {
+                    waiting.textContent = "I can't reach the server right now. It may be offline.";
+                } finally {
+                    busy = false; $("send").disabled = false; $("question").focus();
+                    $("chat").scrollTop = $("chat").scrollHeight;
+                }
+            }
+
+            $("send").onclick = () => ask($("question").value);
+            $("question").onkeydown = (e) => { if (e.key === "Enter") ask($("question").value); };
+        })();
+    </script>
+</body>
+
+</html>
